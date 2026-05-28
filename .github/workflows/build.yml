@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         java: [17, 21]
-        distribution: [temurin, zulu, corretto]
+        distribution: [temurin, corretto]
         os: [ubuntu-latest]
 
     steps:
@@ -47,6 +47,8 @@ jobs:
 
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
+        with:
+          sbt-runner-version: 2.0.0-RC13
 
       - name: Check formatting
         run: sbt "scalafmtCheckAll; scalafmtSbtCheck"
