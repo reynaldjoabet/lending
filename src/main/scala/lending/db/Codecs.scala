@@ -1,7 +1,8 @@
 package lending.db
 
-import lending.domain.*
+import java.time.{Instant, LocalDate, ZoneOffset}
 
+import lending.domain.*
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.*
 import io.circe.parser.parse as parseJson
@@ -9,41 +10,49 @@ import io.circe.syntax.*
 import skunk.*
 import skunk.codec.all.*
 import org.typelevel.twiddles.syntax.*
+import io.github.iltotore.iron.circe.given
 import io.github.iltotore.iron.constraint.all.*
 import io.github.iltotore.iron.skunk.*
-import io.github.iltotore.iron.circe.given
-import java.time.{Instant, LocalDate, ZoneOffset}
 
 object Codecs {
 
   // ---- ids ----
-  val userId: Codec[UserId] = uuid.imap(UserId.assume)(_.value)
+  val userId: Codec[UserId]         = uuid.imap(UserId.assume)(_.value)
   val businessId: Codec[BusinessId] = uuid.imap(BusinessId.assume)(_.value)
+
   val applicationId: Codec[ApplicationId] =
     uuid.imap(ApplicationId.assume)(_.value)
-  val scoreId: Codec[ScoreId] = uuid.imap(ScoreId.assume)(_.value)
-  val loanId: Codec[LoanId] = uuid.imap(LoanId.assume)(_.value)
+
+  val scoreId: Codec[ScoreId]         = uuid.imap(ScoreId.assume)(_.value)
+  val loanId: Codec[LoanId]           = uuid.imap(LoanId.assume)(_.value)
   val agreementId: Codec[AgreementId] = uuid.imap(AgreementId.assume)(_.value)
   val repaymentId: Codec[RepaymentId] = uuid.imap(RepaymentId.assume)(_.value)
+
   val linkedAccountId: Codec[LinkedAccountId] =
     uuid.imap(LinkedAccountId.assume)(_.value)
-  val cardId: Codec[CardId] = uuid.imap(CardId.assume)(_.value)
+
+  val cardId: Codec[CardId]       = uuid.imap(CardId.assume)(_.value)
   val badDealId: Codec[BadDealId] = uuid.imap(BadDealId.assume)(_.value)
 
   // ---- scalars ----
   val email: Codec[Email] =
     varchar(254).refined[EmailConstraint].imap(Email.assume)(_.value)
+
   val phone: Codec[PhoneE164] = varchar(16)
     .refined[Match["""^\+[1-9][0-9]{7,14}$"""]]
     .imap(PhoneE164.assume)(_.value)
+
   val passwordHash: Codec[PasswordHash] =
     varchar(120).imap(PasswordHash.assume)(_.value)
+
   val fullName: Codec[FullName] = varchar(200)
     .refined[Not[Blank] & MaxLength[200]]
     .imap(FullName.assume)(_.value)
+
   val businessName: Codec[BusinessName] = varchar(200)
     .refined[Not[Blank] & MaxLength[200]]
     .imap(BusinessName.assume)(_.value)
+
   val ein: Codec[Ein] = bpchar(9)
     .refined[FixedLength[9] & Match["^[0-9]{9}$"]]
     .imap(Ein.assume)(_.value)
@@ -51,23 +60,30 @@ object Codecs {
   val ssnHash: Codec[SsnHash] = bpchar(64)
     .refined[FixedLength[64] & Match["^[0-9a-f]{64}$"]]
     .imap(SsnHash.assume)(_.value)
+
   val ssnLast4: Codec[SsnLast4] = bpchar(4)
     .refined[FixedLength[4] & Match["^[0-9]{4}$"]]
     .imap(SsnLast4.assume)(_.value)
 
   val amountMinor: Codec[AmountMinor] = int8.imap(AmountMinor.assume)(_.value)
+
   val positiveAmount: Codec[PositiveAmount] =
     int8.refined[Positive].imap(PositiveAmount.assume)(_.value)
+
   val currency: Codec[CurrencyCode] =
     bpchar(3).refined[Match["^[A-Z]{3}$"]].imap(CurrencyCode.assume)(_.value)
+
   val score: Codec[Score] =
     int4.refined[GreaterEqual[300] & LessEqual[850]].imap(Score.assume)(_.value)
+
   val aprBps: Codec[AprBps] = int4
     .refined[GreaterEqual[0] & LessEqual[100_000]]
     .imap(AprBps.assume)(_.value)
+
   val pdBps: Codec[PdBps] = int4
     .refined[GreaterEqual[0] & LessEqual[10_000]]
     .imap(PdBps.assume)(_.value)
+
   val termMonths: Codec[TermMonths] = int4
     .refined[GreaterEqual[1] & LessEqual[120]]
     .imap(TermMonths.assume)(_.value)
@@ -75,18 +91,23 @@ object Codecs {
   val cardToken: Codec[CardToken] = varchar(128)
     .refined[Not[Blank] & MaxLength[128]]
     .imap(CardToken.assume)(_.value)
+
   val last4: Codec[Last4] = bpchar(4)
     .refined[FixedLength[4] & Match["^[0-9]{4}$"]]
     .imap(Last4.assume)(_.value)
+
   val cardExpiry: Codec[CardExpiry] = varchar(5)
     .refined[Match["""^(0[1-9]|1[0-2])/[0-9]{2}$"""]]
     .imap(CardExpiry.assume)(_.value)
+
   val routingNumber: Codec[RoutingNumber] = bpchar(9)
     .refined[FixedLength[9] & Match["^[0-9]{9}$"]]
     .imap(RoutingNumber.assume)(_.value)
+
   val plaidItemId: Codec[PlaidItemId] = varchar(64)
     .refined[Not[Blank] & MaxLength[64]]
     .imap(PlaidItemId.assume)(_.value)
+
   val docusignEnvId: Codec[DocuSignEnvelopeId] = bpchar(36)
     .refined[Match["^[A-Za-z0-9-]{36}$"]]
     .imap(DocuSignEnvelopeId.assume)(_.value)
@@ -94,6 +115,7 @@ object Codecs {
   val title: Codec[Title] = varchar(200)
     .refined[Not[Blank] & MaxLength[200]]
     .imap(Title.assume)(_.value)
+
   val body: Codec[Body] =
     text.refined[Not[Blank] & MaxLength[8000]].imap(Body.assume)(_.value)
 
@@ -158,7 +180,7 @@ object Codecs {
       case "failed"    => Right(RepaymentStatus.Failed)
       case "skipped"   => Right(RepaymentStatus.Skipped)
       case o           => Left(s"unknown repayment status: $o")
-    } { _.toString.toLowerCase }
+    }(_.toString.toLowerCase)
 
   val cardStatus: Codec[CardStatus] = varchar(12).eimap[CardStatus] {
     case "issued"    => Right(CardStatus.Issued)
@@ -166,7 +188,7 @@ object Codecs {
     case "frozen"    => Right(CardStatus.Frozen)
     case "cancelled" => Right(CardStatus.Cancelled)
     case o           => Left(s"unknown card status: $o")
-  } { _.toString.toLowerCase }
+  }(_.toString.toLowerCase)
 
   val badDealStage: Codec[BadDealStage] = varchar(16).eimap[BadDealStage] {
     case "eligible"  => Right(BadDealStage.Eligible)
@@ -174,19 +196,21 @@ object Codecs {
     case "sold"      => Right(BadDealStage.Sold)
     case "recovered" => Right(BadDealStage.Recovered)
     case o           => Left(s"unknown bad deal stage: $o")
-  } { _.toString.toLowerCase }
+  }(_.toString.toLowerCase)
 
   private val instant: Codec[java.time.Instant] =
     timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
-  /** ScoringInputs persists as JSONB. */
+  /**
+    * ScoringInputs persists as JSONB.
+    */
   given Encoder[ScoringInputs] = deriveEncoder
   given Decoder[ScoringInputs] = deriveDecoder
 
   val scoringInputs: Codec[ScoringInputs] =
     skunk.codec.all.text.eimap[ScoringInputs] { s =>
       parseJson(s).flatMap(_.as[ScoringInputs]).left.map(_.getMessage)
-    } { in => in.asJson.noSpaces }
+    }(in => in.asJson.noSpaces)
 
   // ---- aggregates ----
   // skunk 1.x's `*:` chain produces right-nested Tuple2 pairs `(A, (B, (C, ...)))`.
@@ -195,8 +219,9 @@ object Codecs {
 
   val user: Codec[User] =
     (userId *: email *: phone *: passwordHash *: fullName *: role *: ssnHash.opt *: ssnLast4.opt *:
-      date.opt *: kycStatus *: instant).imap { case (id, (em, (ph, (pw, (fn, (rl, (sh, (sl, (dob, (kyc, ca)))))))))) =>
-      User(id, em, ph, pw, fn, rl, sh, sl, dob, kyc, ca)
+      date.opt *: kycStatus *: instant).imap {
+      case (id, (em, (ph, (pw, (fn, (rl, (sh, (sl, (dob, (kyc, ca)))))))))) =>
+        User(id, em, ph, pw, fn, rl, sh, sl, dob, kyc, ca)
     }(u =>
       (
         u.id,
@@ -224,8 +249,9 @@ object Codecs {
 
   val business: Codec[Business] =
     (businessId *: userId *: businessName *: ein *: varchar(64) *: date *:
-      positiveAmount *: positiveAmount *: instant).imap { case (id, (own, (nm, (en, (ind, (fd, (ar, (mr, ca)))))))) =>
-      Business(id, own, nm, en, ind, fd, ar, mr, ca)
+      positiveAmount *: positiveAmount *: instant).imap {
+      case (id, (own, (nm, (en, (ind, (fd, (ar, (mr, ca)))))))) =>
+        Business(id, own, nm, en, ind, fd, ar, mr, ca)
     }(b =>
       (
         b.id,
@@ -475,8 +501,9 @@ object Codecs {
     (badDealId *: loanId *: badDealStage *: int4.opt *: positiveAmount.opt *: varchar(
       128
     ).opt *:
-      instant *: instant.opt *: instant.opt).imap { case (id, (lid, (st, (db, (sp, (br, (fa, (la, sa)))))))) =>
-      BadDeal(id, lid, st, db, sp, br, fa, la, sa)
+      instant *: instant.opt *: instant.opt).imap {
+      case (id, (lid, (st, (db, (sp, (br, (fa, (la, sa)))))))) =>
+        BadDeal(id, lid, st, db, sp, br, fa, la, sa)
     }(d =>
       (
         d.id,
@@ -495,4 +522,5 @@ object Codecs {
         )
       )
     )
+
 }

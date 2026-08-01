@@ -1,20 +1,23 @@
 package lending.db
 
-import lending.domain.*
-
 import cats.effect.*
 import cats.syntax.all.*
+
+import lending.domain.*
 import skunk.*
 import skunk.implicits.*
 
 trait Cards[F[_]] {
+
   def insert(c: VirtualCard): F[VirtualCard]
   def findForLoan(loanId: LoanId): F[Option[VirtualCard]]
   def setStatus(id: CardId, status: CardStatus): F[Unit]
+
 }
 
 object Cards {
-  import Codecs.{virtualCard as cardC, cardId as cardIdC, loanId as loanIdC, cardStatus as statusC}
+
+  import Codecs.{cardId as cardIdC, cardStatus as statusC, loanId as loanIdC, virtualCard as cardC}
 
   def make[F[_]: Concurrent](pool: Resource[F, Session[F]]): Cards[F] =
     new Cards[F] {
@@ -27,6 +30,7 @@ object Cards {
     }
 
   private object Q {
+
     val insert: Query[VirtualCard, VirtualCard] =
       sql"""INSERT INTO virtual_cards (id, loan_id, token, last4, expiry, status, spend_limit, issued_at)
             VALUES $cardC
@@ -40,5 +44,7 @@ object Cards {
 
     val setStatus: Command[(CardStatus, CardId)] =
       sql"UPDATE virtual_cards SET status = $statusC WHERE id = $cardIdC".command
+
   }
+
 }

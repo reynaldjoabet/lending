@@ -1,17 +1,19 @@
 package lending.db
 
-import lending.domain.*
-
 import cats.effect.*
 import cats.syntax.all.*
+
+import lending.domain.*
 import skunk.*
 import skunk.implicits.*
 
 trait Applications[F[_]] {
+
   def submit(a: LoanApplication): F[LoanApplication]
   def find(id: ApplicationId): F[Option[LoanApplication]]
   def listForBusiness(businessId: BusinessId): F[List[LoanApplication]]
   def updateStatus(id: ApplicationId, status: ApplicationStatus): F[Unit]
+
   def applyDecision(
       id: ApplicationId,
       score: ScoreId,
@@ -19,25 +21,28 @@ trait Applications[F[_]] {
       term: TermMonths,
       apr: AprBps
   ): F[Unit]
+
   def decline(id: ApplicationId, reason: Body): F[Unit]
 
   // scoring
   def saveScore(r: ScoringResult): F[ScoringResult]
   def findScore(id: ScoreId): F[Option[ScoringResult]]
+
 }
 
 object Applications {
+
   import Codecs.{
-    loanApplication as appC,
     applicationId as appIdC,
-    businessId as businessIdC,
     applicationStatus as statusC,
+    aprBps,
+    body,
+    businessId as businessIdC,
+    loanApplication as appC,
+    positiveAmount,
     scoreId as scoreIdC,
     scoringResult as scoreC,
-    positiveAmount,
-    termMonths,
-    aprBps,
-    body
+    termMonths
   }
 
   def make[F[_]: Concurrent](pool: Resource[F, Session[F]]): Applications[F] =
@@ -136,5 +141,7 @@ object Applications {
                    recommended_amount, recommended_term_months, recommended_apr_bps,
                    inputs, scored_at
             FROM scoring_results WHERE id = $scoreIdC""".query(scoreC)
+
   }
+
 }

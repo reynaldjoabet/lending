@@ -1,9 +1,9 @@
 package lending.domain
 
+import java.util.UUID
+
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.all.*
-
-import java.util.UUID
 
 // ---------- Identifiers ----------
 
@@ -40,7 +40,7 @@ object BadDealId extends RefinedType[UUID, Pure] {}
 // ---------- Contact ----------
 
 type EmailConstraint = Not[Blank] & MaxLength[254] & Match["""^[^@\s]+@[^@\s]+\.[^@\s]+$"""]
-type Email = Email.T
+type Email           = Email.T
 object Email extends RefinedType[String, EmailConstraint] {}
 
 type PhoneE164 = PhoneE164.T
@@ -57,7 +57,9 @@ object PasswordHash extends RefinedType[String, Not[Blank] & MaxLength[120]] {}
 type BusinessName = BusinessName.T
 object BusinessName extends RefinedType[String, Not[Blank] & MaxLength[200]] {}
 
-/** US EIN, 9 digits. */
+/**
+  * US EIN, 9 digits.
+  */
 type Ein = Ein.T
 object Ein extends RefinedType[String, FixedLength[9] & Match["^[0-9]{9}$"]] {}
 
@@ -77,7 +79,9 @@ object SsnLast4 extends RefinedType[String, FixedLength[4] & Match["^[0-9]{4}$"]
 type AmountMinor = AmountMinor.T
 object AmountMinor extends RefinedType[Long, Pure] {}
 
-/** Strictly positive — principal, payment, limit, fee amounts. */
+/**
+  * Strictly positive — principal, payment, limit, fee amounts.
+  */
 type PositiveAmount = PositiveAmount.T
 object PositiveAmount extends RefinedType[Long, Positive] {}
 
@@ -88,21 +92,27 @@ object CurrencyCode extends RefinedType[String, Match["^[A-Z]{3}$"]] {
 
 // ---------- Risk & rate ----------
 
-/** Risk score the scoring engine emits, mapped to a 300..850 FICO-equivalent scale so downstream policy reads the same
-  * way regardless of upstream model.
+/**
+  * Risk score the scoring engine emits, mapped to a 300..850 FICO-equivalent scale so downstream
+  * policy reads the same way regardless of upstream model.
   */
 type Score = Score.T
 object Score extends RefinedType[Int, GreaterEqual[300] & LessEqual[850]] {}
 
-/** APR in basis points, capped at 100_000 = 1000% to flag anything usurious. */
+/**
+  * APR in basis points, capped at 100_000 = 1000% to flag anything usurious.
+  */
 type AprBps = AprBps.T
 object AprBps extends RefinedType[Int, GreaterEqual[0] & LessEqual[100_000]] {}
 
-/** Probability of default, in basis points (0..10_000 = 0%..100%). */
+/**
+  * Probability of default, in basis points (0..10_000 = 0%..100%).
+  */
 type PdBps = PdBps.T
 object PdBps extends RefinedType[Int, GreaterEqual[0] & LessEqual[10_000]] {}
 
-/** Term in months — Iron enforces a sane band so a 0- or 600-month loan can't be modelled.
+/**
+  * Term in months — Iron enforces a sane band so a 0- or 600-month loan can't be modelled.
   */
 type TermMonths = TermMonths.T
 object TermMonths extends RefinedType[Int, GreaterEqual[1] & LessEqual[120]] {}
@@ -123,7 +133,9 @@ object RoutingNumber extends RefinedType[String, FixedLength[9] & Match["^[0-9]{
 
 // ---------- Plaid ----------
 
-/** Plaid's `item_id` is opaque, ~30 chars URL-safe. */
+/**
+  * Plaid's `item_id` is opaque, ~30 chars URL-safe.
+  */
 type PlaidItemId = PlaidItemId.T
 object PlaidItemId extends RefinedType[String, Not[Blank] & MaxLength[64]] {}
 
@@ -140,32 +152,37 @@ object Body extends RefinedType[String, Not[Blank] & MaxLength[8000]] {}
 
 // ---------- Enums ----------
 
-enum Role { case Applicant, Admin, BackOffice }
+enum Role   { case Applicant, Admin, BackOffice }
 object Role {
+
   def parse(s: String): Either[String, Role] = s.toLowerCase match {
     case "applicant"   => Right(Applicant)
     case "admin"       => Right(Admin)
     case "back_office" => Right(BackOffice)
     case o             => Left(s"unknown role: $o")
   }
+
   def render(r: Role): String = r match {
     case Applicant  => "applicant"
     case Admin      => "admin"
     case BackOffice => "back_office"
   }
+
 }
 
 enum KycStatus { case NotStarted, Pending, Approved, Rejected }
 
 enum ApplicationStatus {
-  case Submitted // applicant filed the form
+
+  case Submitted    // applicant filed the form
   case Underwriting // scoring engine is computing
-  case Approved // priced, awaiting agreement
+  case Approved     // priced, awaiting agreement
   case Declined
   case Withdrawn
-  case AgreementSent // DocuSign envelope dispatched
+  case AgreementSent   // DocuSign envelope dispatched
   case AgreementSigned // applicant signed
-  case Disbursed // funds released
+  case Disbursed       // funds released
+
 }
 
 enum LoanStatus {

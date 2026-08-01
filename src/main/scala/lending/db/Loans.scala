@@ -1,14 +1,15 @@
 package lending.db
 
-import lending.domain.*
-
 import cats.effect.*
 import cats.syntax.all.*
+
+import lending.domain.*
 import skunk.*
-import skunk.implicits.*
 import skunk.codec.all.*
+import skunk.implicits.*
 
 trait Loans[F[_]] {
+
   def insert(l: Loan, schedule: List[RepaymentSchedule]): F[Loan]
   def find(id: LoanId): F[Option[Loan]]
   def listForBusiness(businessId: BusinessId): F[List[Loan]]
@@ -21,19 +22,22 @@ trait Loans[F[_]] {
   def scheduleFor(loanId: LoanId): F[List[RepaymentSchedule]]
   def nextDue(loanId: LoanId): F[Option[RepaymentSchedule]]
   def overdueAsOf(today: java.time.LocalDate): F[List[RepaymentSchedule]]
+
   def updateRepayment(
       id: RepaymentId,
       status: RepaymentStatus,
       railRef: Option[String],
       capturedAt: Option[java.time.Instant]
   ): F[Unit]
+
 }
 
 object Loans {
+
   import Codecs.{
+    businessId as businessIdC,
     loan as loanC,
     loanId as loanIdC,
-    businessId as businessIdC,
     loanStatus as statusC,
     repayment as repC,
     repaymentId as repIdC,
@@ -48,9 +52,9 @@ object Loans {
           s.transaction.use { _ =>
             for {
               saved <- s.prepare(Q.insertLoan).flatMap(_.unique(l))
-              _ <- s
-                .prepare(Q.insertRepayment)
-                .flatMap(pc => schedule.traverse_(pc.execute))
+              _     <- s
+                     .prepare(Q.insertRepayment)
+                     .flatMap(pc => schedule.traverse_(pc.execute))
             } yield saved
           }
         }
@@ -184,5 +188,7 @@ object Loans {
         ).opt},
                                    captured_at = ${timestamptz.opt}
             WHERE id = $repIdC""".command
+
   }
+
 }

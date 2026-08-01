@@ -1,25 +1,33 @@
 package lending.db
 
-import lending.domain.*
+import java.time.{Instant, ZoneOffset}
 
 import cats.effect.*
 import cats.syntax.all.*
-import skunk.*
-import skunk.implicits.*
-import skunk.codec.all.timestamptz
 
-import java.time.{Instant, ZoneOffset}
+import lending.domain.*
+import skunk.*
+import skunk.codec.all.timestamptz
+import skunk.implicits.*
 
 trait Agreements[F[_]] {
+
   def create(a: LoanAgreement): F[LoanAgreement]
   def findByApplication(id: ApplicationId): F[Option[LoanAgreement]]
   def findByEnvelope(envelope: DocuSignEnvelopeId): F[Option[LoanAgreement]]
   def markSigned(id: AgreementId, at: Instant): F[Unit]
   def markDeclined(id: AgreementId, at: Instant): F[Unit]
+
 }
 
 object Agreements {
-  import Codecs.{loanAgreement as agreementC, agreementId as agreementIdC, applicationId as appIdC, docusignEnvId}
+
+  import Codecs.{
+    agreementId as agreementIdC,
+    applicationId as appIdC,
+    docusignEnvId,
+    loanAgreement as agreementC
+  }
 
   def make[F[_]: Concurrent](pool: Resource[F, Session[F]]): Agreements[F] =
     new Agreements[F] {
@@ -49,6 +57,7 @@ object Agreements {
     }
 
   private object Q {
+
     val insert: Query[LoanAgreement, LoanAgreement] =
       sql"""INSERT INTO loan_agreements (id, application_id, docusign_envelope_id, document_url,
                                           sent_at, signed_at, declined_at)
@@ -74,5 +83,7 @@ object Agreements {
 
     val declined: Command[(java.time.OffsetDateTime, AgreementId)] =
       sql"UPDATE loan_agreements SET declined_at = $timestamptz WHERE id = $agreementIdC".command
+
   }
+
 }

@@ -52,10 +52,12 @@ final case class LoanApplication(
     requestedTermMonths: TermMonths,
     purpose: Body,
     status: ApplicationStatus,
-    /** Score id linking to the underwriting decision, populated post-underwriting.
+    /**
+      * Score id linking to the underwriting decision, populated post-underwriting.
       */
     scoreId: Option[ScoreId],
-    /** Set when the underwriter approves; the priced terms the applicant must accept.
+    /**
+      * Set when the underwriter approves; the priced terms the applicant must accept.
       */
     pricedAmount: Option[PositiveAmount],
     pricedTermMonths: Option[TermMonths],
@@ -67,7 +69,9 @@ final case class LoanApplication(
 
 // ---------- Scoring ----------
 
-/** Inputs the scoring engine consumed. We persist a snapshot so admins can reproduce the decision later.
+/**
+  * Inputs the scoring engine consumed. We persist a snapshot so admins can reproduce the decision
+  * later.
   */
 final case class ScoringInputs(
     bureauScore: Option[Score],
@@ -78,8 +82,9 @@ final case class ScoringInputs(
     industry: String
 )
 
-/** Outputs the scoring engine produced. The `model` string identifies which version of the AI ensemble made the call —
-  * critical for audit.
+/**
+  * Outputs the scoring engine produced. The `model` string identifies which version of the AI
+  * ensemble made the call — critical for audit.
   */
 final case class ScoringResult(
     id: ScoreId,
@@ -88,7 +93,9 @@ final case class ScoringResult(
     score: Score,
     pdBps: PdBps,
     approve: Boolean,
-    /** Recommended priced terms — may be tightened by policy before display. */
+    /**
+      * Recommended priced terms — may be tightened by policy before display.
+      */
     recommendedAmount: PositiveAmount,
     recommendedTermMonths: TermMonths,
     recommendedAprBps: AprBps,
@@ -102,7 +109,9 @@ final case class LoanAgreement(
     id: AgreementId,
     applicationId: ApplicationId,
     docusignEnvelopeId: DocuSignEnvelopeId,
-    /** PDF stored externally; we keep just the URL. */
+    /**
+      * PDF stored externally; we keep just the URL.
+      */
     documentUrl: String,
     sentAt: Instant,
     signedAt: Option[Instant],
@@ -120,10 +129,13 @@ final case class Loan(
     termMonths: TermMonths,
     aprBps: AprBps,
     status: LoanStatus,
-    /** Outstanding principal — decrements as repayments capture. */
+    /**
+      * Outstanding principal — decrements as repayments capture.
+      */
     outstandingMinor: Long,
     disbursedAt: Instant,
-    /** Number of consecutive failed/late repayments. Drives delinquency tagging.
+    /**
+      * Number of consecutive failed/late repayments. Drives delinquency tagging.
       */
     consecutiveDelinquent: Int
 )
@@ -138,7 +150,9 @@ final case class RepaymentSchedule(
     totalMinor: PositiveAmount,
     status: RepaymentStatus,
     capturedAt: Option[Instant],
-    /** Upstream payment-rail reference once captured (PayPal / Mbanq). */
+    /**
+      * Upstream payment-rail reference once captured (PayPal / Mbanq).
+      */
     railRef: Option[String]
 )
 
@@ -147,7 +161,9 @@ final case class RepaymentSchedule(
 final case class VirtualCard(
     id: CardId,
     loanId: LoanId,
-    /** Mbanq's card token. */
+    /**
+      * Mbanq's card token.
+      */
     token: CardToken,
     last4: Last4,
     expiry: CardExpiry,
@@ -158,19 +174,26 @@ final case class VirtualCard(
 
 // ---------- Bad-deal management ----------
 
-/** One row per nonperforming loan. The workflow: Eligible - flagged by the delinquency sweeper Listed - posted to the
-  * collection-agency marketplace Sold - collection agency accepted, funds received Recovered - sold debt has been
-  * recovered by the agency
+/**
+  * One row per nonperforming loan. The workflow: Eligible - flagged by the delinquency sweeper
+  * Listed - posted to the collection-agency marketplace Sold - collection agency accepted, funds
+  * received Recovered - sold debt has been recovered by the agency
   */
 final case class BadDeal(
     id: BadDealId,
     loanId: LoanId,
     stage: BadDealStage,
-    /** Discount applied when sold (basis points off principal). */
+    /**
+      * Discount applied when sold (basis points off principal).
+      */
     discountBps: Option[Int],
-    /** Net proceeds from the sale. */
+    /**
+      * Net proceeds from the sale.
+      */
     saleProceedsMinor: Option[PositiveAmount],
-    /** Collection agency identifier. */
+    /**
+      * Collection agency identifier.
+      */
     buyerRef: Option[String],
     flaggedAt: Instant,
     listedAt: Option[Instant],

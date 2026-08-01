@@ -1,29 +1,34 @@
 package lending.service
 
-import lending.domain.*
-import lending.db.{BadDeals, Loans}
-import lending.external.CollectionsMarketplace
+import java.time.Instant
+import java.util.UUID
 
 import cats.effect.*
 import cats.syntax.all.*
 
-import java.time.Instant
-import java.util.UUID
+import lending.db.{BadDeals, Loans}
+import lending.domain.*
+import lending.external.CollectionsMarketplace
 
-/** Bad-Deal Management.
+/**
+  * Bad-Deal Management.
   *
-  * The brief's key requirement: "automatically sells nonperforming loans to a collection agency." Two stages:
+  * The brief's key requirement: "automatically sells nonperforming loans to a collection agency."
+  * Two stages:
   *
-  *   1. **Sweeper** — `flagDelinquentLoans` walks every active loan whose `consecutive_delinquent >= threshold` and
-  *      writes (or updates) a `bad_deals` row at stage `Eligible`.
-  *   2. **Disposer** — `auctionEligible` lists each `Eligible` row on the collections marketplace, takes the best bid,
-  *      marks the loan `Sold`, and records the proceeds.
+  *   1. **Sweeper** — `flagDelinquentLoans` walks every active loan whose
+  *      `consecutive_delinquent >= threshold` and writes (or updates) a `bad_deals` row at stage
+  *      `Eligible`.
+  *   2. **Disposer** — `auctionEligible` lists each `Eligible` row on the collections marketplace,
+  *      takes the best bid, marks the loan `Sold`, and records the proceeds.
   *
   * Both methods are idempotent; safe to schedule once a day.
   */
 trait BadDealService[F[_]] {
+
   def flagDelinquentLoans(threshold: Int): F[Int]
   def auctionEligible(): F[BadDealService.Summary]
+
 }
 
 object BadDealService {
@@ -36,14 +41,13 @@ object BadDealService {
       marketplace: CollectionsMarketplace[F]
   ): BadDealService[F] = new BadDealService[F] {
 
-    def flagDelinquentLoans(threshold: Int): F[Int] = {
+    def flagDelinquentLoans(threshold: Int): F[Int] =
       // Real implementation: a single SQL query picks loans where
       // status='delinquent' AND consecutive_delinquent >= threshold AND
       // there's no existing bad_deals row at Sold/Recovered. Sketched here as
       // a no-op so the trait surface stays correct and the orchestration
       // (cron + sweeper) is the only thing to wire up later.
       Sync[F].pure(0)
-    }
 
     def auctionEligible(): F[Summary] =
       badDeals.listByStage(BadDealStage.Eligible).flatMap { eligible =>
@@ -53,25 +57,25 @@ object BadDealService {
             case Some(loan) =>
               for {
                 listingRef <- marketplace.list(loan)
-                now1 <- Sync[F].delay(Instant.now())
-                _ <- badDeals.updateStage(
-                  deal.id,
-                  BadDealStage.Listed,
-                  None,
-                  None,
-                  None,
-                  now1
-                )
+                now1       <- Sync[F].delay(Instant.now())
+                _          <- badDeals.updateStage(
+                       deal.id,
+                       BadDealStage.Listed,
+                       None,
+                       None,
+                       None,
+                       now1
+                     )
                 settlement <- marketplace.settleBest(listingRef)
-                now2 <- Sync[F].delay(Instant.now())
-                _ <- badDeals.updateStage(
-                  deal.id,
-                  BadDealStage.Sold,
-                  Some(settlement.discountBps),
-                  Some(settlement.proceeds),
-                  Some(settlement.buyerRef),
-                  now2
-                )
+                now2       <- Sync[F].delay(Instant.now())
+                _          <- badDeals.updateStage(
+                       deal.id,
+                       BadDealStage.Sold,
+                       Some(settlement.discountBps),
+                       Some(settlement.proceeds),
+                       Some(settlement.buyerRef),
+                       now2
+                     )
                 _ <- loans.updateStatus(loan.id, LoanStatus.Sold)
               } yield Summary(
                 listed = acc.listed + 1,
@@ -83,7 +87,9 @@ object BadDealService {
       }
   }
 
-  /** Mark a loan as eligible for sale. Used by the delinquency sweeper above and by manual back-office actions.
+  /**
+    * Mark a loan as eligible for sale. Used by the delinquency sweeper above and by manual
+    * back-office actions.
     */
   def markEligible[F[_]: Sync](badDeals: BadDeals[F])(loan: Loan): F[BadDeal] =
     Sync[F]
@@ -103,4 +109,5 @@ object BadDealService {
           )
         )
       )
+
 }

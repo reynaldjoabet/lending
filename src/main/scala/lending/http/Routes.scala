@@ -1,18 +1,18 @@
 package lending.http
 
-import lending.domain.*
-import lending.db.*
-import lending.service.*
+import java.time.Instant
+import java.util.UUID
 
 import cats.effect.*
 import cats.syntax.all.*
+
+import lending.db.*
+import lending.domain.*
+import lending.service.*
 import io.circe.syntax.*
 import org.http4s.*
 import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.dsl.Http4sDsl
-
-import java.time.Instant
-import java.util.UUID
 
 final class Routes[F[_]: Concurrent](
     auth: Auth[F],
@@ -29,6 +29,7 @@ final class Routes[F[_]: Concurrent](
   import Json.given
 
   private object Principal {
+
     def unapply(req: Request[F]): Option[UserId] =
       req.headers
         .get(org.typelevel.ci.CIString("X-User-Id"))
@@ -38,11 +39,14 @@ final class Routes[F[_]: Concurrent](
             .toOption
             .map(UserId.assume)
         )
+
   }
 
   private object AppVar {
+
     def unapply(s: String): Option[ApplicationId] =
       uuidVar(s, ApplicationId.assume)
+
   }
   private object BizVar {
     def unapply(s: String): Option[BusinessId] = uuidVar(s, BusinessId.assume)
@@ -208,7 +212,7 @@ final class Routes[F[_]: Concurrent](
         for {
           bizs <- businesses.listForOwner(uid)
           apps <- bizs.flatTraverse(b => applications.listForBusiness(b.id))
-          r <- Ok(apps)
+          r    <- Ok(apps)
         } yield r
       )
 
@@ -218,8 +222,8 @@ final class Routes[F[_]: Concurrent](
       authed(req)(uid =>
         for {
           bizs <- businesses.listForOwner(uid)
-          ls <- bizs.flatTraverse(b => loans.listForBusiness(b.id))
-          r <- Ok(ls)
+          ls   <- bizs.flatTraverse(b => loans.listForBusiness(b.id))
+          r    <- Ok(ls)
         } yield r
       )
 
@@ -235,8 +239,8 @@ final class Routes[F[_]: Concurrent](
           .flatMap(s =>
             Ok(
               Map[String, Long](
-                "listed" -> s.listed.toLong,
-                "sold" -> s.sold.toLong,
+                "listed"        -> s.listed.toLong,
+                "sold"          -> s.sold.toLong,
                 "proceedsMinor" -> s.totalProceedsMinor
               ).asJson
             )
@@ -250,4 +254,5 @@ final class Routes[F[_]: Concurrent](
           .flatMap(n => Ok(Map("flagged" -> n).asJson))
       )
   }
+
 }

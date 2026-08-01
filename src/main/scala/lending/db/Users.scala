@@ -1,15 +1,18 @@
 package lending.db
 
-import lending.domain.*
-
 import cats.effect.*
+import cats.syntax.all.*
+
+import lending.domain.*
 import skunk.*
 import skunk.implicits.*
-import cats.syntax.all.*
+
 trait Users[F[_]] {
+
   def create(u: User): F[User]
   def find(id: UserId): F[Option[User]]
   def findByEmail(e: Email): F[Option[User]]
+
   def updateKyc(
       id: UserId,
       status: KycStatus,
@@ -17,10 +20,12 @@ trait Users[F[_]] {
       ssnLast4: Option[SsnLast4],
       dob: Option[java.time.LocalDate]
   ): F[Unit]
+
 }
 
 object Users {
-  import Codecs.{user as userC, userId as userIdC, email as emailC, kycStatus, ssnHash, ssnLast4}
+
+  import Codecs.{email as emailC, kycStatus, ssnHash, ssnLast4, user as userC, userId as userIdC}
   import skunk.codec.all.date
 
   def make[F[_]: Concurrent](pool: Resource[F, Session[F]]): Users[F] =
@@ -44,20 +49,24 @@ object Users {
     }
 
   private object Q {
+
     val insert: Query[User, User] =
       sql"""INSERT INTO users (id, email, phone, password_hash, full_name, role, ssn_hash, ssn_last4,
                                 date_of_birth, kyc_status, created_at)
             VALUES $userC
             RETURNING id, email, phone, password_hash, full_name, role, ssn_hash, ssn_last4,
                       date_of_birth, kyc_status, created_at""".query(userC)
+
     val byId: Query[UserId, User] =
       sql"""SELECT id, email, phone, password_hash, full_name, role, ssn_hash, ssn_last4,
                    date_of_birth, kyc_status, created_at FROM users WHERE id = $userIdC"""
         .query(userC)
+
     val byEmail: Query[Email, User] =
       sql"""SELECT id, email, phone, password_hash, full_name, role, ssn_hash, ssn_last4,
                    date_of_birth, kyc_status, created_at FROM users WHERE email = $emailC"""
         .query(userC)
+
     val setKyc: Command[
       (
           KycStatus,
@@ -71,5 +80,7 @@ object Users {
             SET kyc_status = $kycStatus, ssn_hash = ${ssnHash.opt}, ssn_last4 = ${ssnLast4.opt},
                 date_of_birth = ${date.opt}
             WHERE id = $userIdC""".command
+
   }
+
 }

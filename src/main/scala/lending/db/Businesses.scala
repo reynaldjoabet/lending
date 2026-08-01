@@ -1,22 +1,30 @@
 package lending.db
 
-import lending.domain.*
-
 import cats.effect.*
 import cats.syntax.all.*
+
+import lending.domain.*
 import skunk.*
 import skunk.implicits.*
 
 trait Businesses[F[_]] {
+
   def create(b: Business): F[Business]
   def find(id: BusinessId): F[Option[Business]]
   def listForOwner(ownerUserId: UserId): F[List[Business]]
   def addLinkedAccount(la: LinkedAccount): F[LinkedAccount]
   def linkedAccountsFor(id: BusinessId): F[List[LinkedAccount]]
+
 }
 
 object Businesses {
-  import Codecs.{business as businessC, businessId as businessIdC, linkedAccount as linkedC, userId as userIdC}
+
+  import Codecs.{
+    business as businessC,
+    businessId as businessIdC,
+    linkedAccount as linkedC,
+    userId as userIdC
+  }
 
   def make[F[_]: Concurrent](pool: Resource[F, Session[F]]): Businesses[F] =
     new Businesses[F] {
@@ -37,6 +45,7 @@ object Businesses {
     }
 
   private object Q {
+
     val insert: Query[Business, Business] =
       sql"""INSERT INTO businesses (id, owner_user_id, name, ein, industry, founded_on,
                                      annual_revenue_minor, monthly_revenue_minor, created_at)
@@ -66,5 +75,7 @@ object Businesses {
             FROM linked_accounts WHERE business_id = $businessIdC""".query(
         linkedC
       )
+
   }
+
 }

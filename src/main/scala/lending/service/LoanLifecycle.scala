@@ -1,37 +1,43 @@
 package lending.service
 
-import lending.domain.*
-import lending.db.{Agreements, Applications, Businesses, Cards, Loans, Users}
-import lending.external.{DocuSign, Mbanq}
+import java.time.{Instant, LocalDate}
+import java.util.UUID
 
 import cats.effect.*
 import cats.syntax.all.*
 
-import java.time.{Instant, LocalDate}
-import java.util.UUID
+import lending.db.{Agreements, Applications, Businesses, Cards, Loans, Users}
+import lending.domain.*
+import lending.external.{DocuSign, Mbanq}
 
-/** Once an application is `Approved`, the lifecycle is: sendAgreement -> AgreementSent (DocuSign envelope dispatched)
-  * handleSigned -> AgreementSigned (DocuSign webhook fires) disburse -> Disbursed (Mbanq pushes funds, loan + schedule
-  * created, card issued)
+/**
+  * Once an application is `Approved`, the lifecycle is: sendAgreement -> AgreementSent (DocuSign
+  * envelope dispatched) handleSigned -> AgreementSigned (DocuSign webhook fires) disburse ->
+  * Disbursed (Mbanq pushes funds, loan + schedule created, card issued)
   */
 trait LoanLifecycle[F[_]] {
+
   def sendAgreement(
       applicationId: ApplicationId
   ): F[Either[LoanLifecycle.Error, LoanAgreement]]
+
   def handleSigned(
       envelopeId: DocuSignEnvelopeId
   ): F[Either[LoanLifecycle.Error, Loan]]
+
 }
 
 object LoanLifecycle {
 
   sealed trait Error
   object Error {
+
     case object ApplicationNotFound extends Error
-    case object NotApproved extends Error
-    case object AlreadySigned extends Error
-    case object NoLinkedAccount extends Error
-    case object UnknownEnvelope extends Error
+    case object NotApproved         extends Error
+    case object AlreadySigned       extends Error
+    case object NoLinkedAccount     extends Error
+    case object UnknownEnvelope     extends Error
+
   }
 
   def make[F[_]: Sync](
@@ -54,28 +60,28 @@ object LoanLifecycle {
           Sync[F].pure(Left(Error.NotApproved))
         case Some(app) =>
           for {
-            biz <- businesses.find(app.businessId).map(_.get)
-            owner <- users.find(biz.ownerUserId).map(_.get)
+            biz      <- businesses.find(app.businessId).map(_.get)
+            owner    <- users.find(biz.ownerUserId).map(_.get)
             envelope <- docusign.sendForSignature(
-              owner.email,
-              owner.fullName,
-              agreementText(biz, app)
-            )
+                          owner.email,
+                          owner.fullName,
+                          agreementText(biz, app)
+                        )
             now <- Sync[F].delay(Instant.now())
-            a = LoanAgreement(
-              id = AgreementId.assume(UUID.randomUUID()),
-              applicationId = applicationId,
-              docusignEnvelopeId = envelope.envelopeId,
-              documentUrl = envelope.viewUrl,
-              sentAt = now,
-              signedAt = None,
-              declinedAt = None
-            )
+            a    = LoanAgreement(
+                  id = AgreementId.assume(UUID.randomUUID()),
+                  applicationId = applicationId,
+                  docusignEnvelopeId = envelope.envelopeId,
+                  documentUrl = envelope.viewUrl,
+                  sentAt = now,
+                  signedAt = None,
+                  declinedAt = None
+                )
             saved <- agreements.create(a)
-            _ <- applications.updateStatus(
-              applicationId,
-              ApplicationStatus.AgreementSent
-            )
+            _     <- applications.updateStatus(
+                   applicationId,
+                   ApplicationStatus.AgreementSent
+                 )
           } yield Right(saved)
       }
 
@@ -90,17 +96,18 @@ object LoanLifecycle {
             case Some(app) =>
               for {
                 now <- Sync[F].delay(Instant.now())
-                _ <- agreements.markSigned(a.id, now)
-                _ <- applications.updateStatus(
-                  a.applicationId,
-                  ApplicationStatus.AgreementSigned
-                )
+                _   <- agreements.markSigned(a.id, now)
+                _   <- applications.updateStatus(
+                       a.applicationId,
+                       ApplicationStatus.AgreementSigned
+                     )
                 out <- disburse(app, now)
               } yield out
           }
       }
 
-    /** Money-out step: create the loan + schedule, push funds via Mbanq, issue the virtual card.
+    /**
+      * Money-out step: create the loan + schedule, push funds via Mbanq, issue the virtual card.
       */
     private def disburse(
         app: LoanApplication,
@@ -113,40 +120,40 @@ object LoanLifecycle {
             case (Some(amount), Some(term), Some(apr)) =>
               for {
                 loanRow <- Sync[F].pure(
-                  Loan(
-                    id = LoanId.assume(UUID.randomUUID()),
-                    applicationId = app.id,
-                    businessId = app.businessId,
-                    principalMinor = amount,
-                    currency = app.currency,
-                    termMonths = term,
-                    aprBps = apr,
-                    status = LoanStatus.Active,
-                    outstandingMinor = amount.value,
-                    disbursedAt = now,
-                    consecutiveDelinquent = 0
-                  )
-                )
+                             Loan(
+                               id = LoanId.assume(UUID.randomUUID()),
+                               applicationId = app.id,
+                               businessId = app.businessId,
+                               principalMinor = amount,
+                               currency = app.currency,
+                               termMonths = term,
+                               aprBps = apr,
+                               status = LoanStatus.Active,
+                               outstandingMinor = amount.value,
+                               disbursedAt = now,
+                               consecutiveDelinquent = 0
+                             )
+                           )
                 schedule = amortise(loanRow, today = now)
-                saved <- loans.insert(loanRow, schedule)
-                _ <- mbanq.disburse(linked, amount, s"loan:${loanRow.id.value}")
-                issued <- mbanq.issueVirtualCard(loanRow.id, amount)
-                _ <- cards.insert(
-                  VirtualCard(
-                    id = CardId.assume(UUID.randomUUID()),
-                    loanId = loanRow.id,
-                    token = issued.token,
-                    last4 = issued.last4,
-                    expiry = issued.expiry,
-                    status = CardStatus.Issued,
-                    spendLimitMinor = amount,
-                    issuedAt = now
-                  )
-                )
+                saved   <- loans.insert(loanRow, schedule)
+                _       <- mbanq.disburse(linked, amount, s"loan:${loanRow.id.value}")
+                issued  <- mbanq.issueVirtualCard(loanRow.id, amount)
+                _       <- cards.insert(
+                       VirtualCard(
+                         id = CardId.assume(UUID.randomUUID()),
+                         loanId = loanRow.id,
+                         token = issued.token,
+                         last4 = issued.last4,
+                         expiry = issued.expiry,
+                         status = CardStatus.Issued,
+                         spendLimitMinor = amount,
+                         issuedAt = now
+                       )
+                     )
                 _ <- applications.updateStatus(
-                  app.id,
-                  ApplicationStatus.Disbursed
-                )
+                       app.id,
+                       ApplicationStatus.Disbursed
+                     )
               } yield Right(saved)
             case _ => Sync[F].pure(Left(Error.NotApproved))
           }
@@ -165,12 +172,13 @@ object LoanLifecycle {
          |""".stripMargin
   }
 
-  /** Equal-payment amortisation. Returns one [[RepaymentSchedule]] per month.
+  /**
+    * Equal-payment amortisation. Returns one [[RepaymentSchedule]] per month.
     */
   def amortise(loan: Loan, today: Instant): List[RepaymentSchedule] = {
-    val term = loan.termMonths.value
+    val term      = loan.termMonths.value
     val principal = BigDecimal(loan.principalMinor.value)
-    val monthlyR =
+    val monthlyR  =
       BigDecimal(loan.aprBps.value) / BigDecimal(10_000) / BigDecimal(12)
     val payment =
       if (monthlyR == 0)
@@ -206,4 +214,5 @@ object LoanLifecycle {
       )
     }
   }
+
 }

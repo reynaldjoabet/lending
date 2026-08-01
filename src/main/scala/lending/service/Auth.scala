@@ -1,31 +1,37 @@
 package lending.service
 
-import lending.domain.*
-import lending.db.Users
-
-import cats.effect.*
-import cats.syntax.all.*
-import com.password4j.Password
-
 import java.time.Instant
 import java.util.UUID
 
+import cats.effect.*
+import cats.syntax.all.*
+
+import lending.db.Users
+import lending.domain.*
+import com.password4j.Password
+
 trait Auth[F[_]] {
+
   def signup(
       email: Email,
       phone: PhoneE164,
       password: String,
       fullName: FullName
   ): F[Either[Auth.Error, User]]
+
   def login(email: Email, password: String): F[Either[Auth.Error, User]]
+
 }
 
 object Auth {
+
   sealed trait Error
   object Error {
-    case object EmailTaken extends Error
-    case object PasswordTooWeak extends Error
+
+    case object EmailTaken         extends Error
+    case object PasswordTooWeak    extends Error
     case object InvalidCredentials extends Error
+
   }
 
   def make[F[_]: Sync](users: Users[F]): Auth[F] = new Auth[F] {
@@ -43,22 +49,22 @@ object Auth {
             case None    =>
               for {
                 hash <- Sync[F].delay(
-                  Password.hash(password).withBcrypt().getResult
-                )
+                          Password.hash(password).withBcrypt().getResult
+                        )
                 now <- Sync[F].delay(Instant.now())
-                u = User(
-                  UserId.assume(UUID.randomUUID()),
-                  email,
-                  phone,
-                  PasswordHash.assume(hash),
-                  fullName,
-                  Role.Applicant,
-                  None,
-                  None,
-                  None,
-                  KycStatus.NotStarted,
-                  now
-                )
+                u    = User(
+                      UserId.assume(UUID.randomUUID()),
+                      email,
+                      phone,
+                      PasswordHash.assume(hash),
+                      fullName,
+                      Role.Applicant,
+                      None,
+                      None,
+                      None,
+                      KycStatus.NotStarted,
+                      now
+                    )
                 saved <- users.create(u)
               } yield Right(saved)
           }
@@ -76,4 +82,5 @@ object Auth {
     if (p.length < 8 || !p.exists(_.isDigit) || !p.exists(_.isLetter))
       Left(Error.PasswordTooWeak)
     else Right(())
+
 }

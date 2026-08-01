@@ -1,16 +1,18 @@
 package lending.db
 
-import lending.domain.*
-
 import cats.effect.*
 import cats.syntax.all.*
+
+import lending.domain.*
 import skunk.*
 import skunk.implicits.*
 
 trait BadDeals[F[_]] {
+
   def upsert(d: BadDeal): F[BadDeal]
   def listByStage(stage: BadDealStage): F[List[BadDeal]]
   def findForLoan(loanId: LoanId): F[Option[BadDeal]]
+
   def updateStage(
       id: BadDealId,
       stage: BadDealStage,
@@ -19,10 +21,18 @@ trait BadDeals[F[_]] {
       buyerRef: Option[String],
       at: java.time.Instant
   ): F[Unit]
+
 }
 
 object BadDeals {
-  import Codecs.{badDeal as bdC, badDealId as bdIdC, loanId as loanIdC, badDealStage as stageC, positiveAmount}
+
+  import Codecs.{
+    badDeal as bdC,
+    badDealId as bdIdC,
+    badDealStage as stageC,
+    loanId as loanIdC,
+    positiveAmount
+  }
   import skunk.codec.all.{int4, timestamptz, varchar}
 
   def make[F[_]: Concurrent](pool: Resource[F, Session[F]]): BadDeals[F] =
@@ -47,9 +57,9 @@ object BadDeals {
           buyerRef: Option[String],
           at: java.time.Instant
       ): F[Unit] = {
-        val ts = at.atOffset(java.time.ZoneOffset.UTC)
+        val ts     = at.atOffset(java.time.ZoneOffset.UTC)
         val listed = if (stage == BadDealStage.Listed) Some(ts) else None
-        val sold = if (stage == BadDealStage.Sold) Some(ts) else None
+        val sold   = if (stage == BadDealStage.Sold) Some(ts) else None
         pool
           .use(
             _.prepare(Q.updateStage).flatMap(
@@ -63,6 +73,7 @@ object BadDeals {
     }
 
   private object Q {
+
     val upsert: Query[BadDeal, BadDeal] =
       sql"""INSERT INTO bad_deals (id, loan_id, stage, discount_bps, sale_proceeds_minor,
                                     buyer_ref, flagged_at, listed_at, sold_at)
@@ -108,5 +119,7 @@ object BadDeals {
                 listed_at = COALESCE(${timestamptz.opt}, listed_at),
                 sold_at   = COALESCE(${timestamptz.opt}, sold_at)
             WHERE id = $bdIdC""".command
+
   }
+
 }

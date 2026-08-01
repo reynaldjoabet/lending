@@ -1,14 +1,15 @@
 package lending.external
 
-import lending.domain.*
+import java.time.LocalDate
 
 import cats.effect.*
 
-import java.time.LocalDate
+import lending.domain.*
 
 // ---------- KYC: Jumio + Acuant ----------
 
 trait Kyc[F[_]] {
+
   def submit(
       userId: UserId,
       fullName: FullName,
@@ -17,12 +18,17 @@ trait Kyc[F[_]] {
       documentImageUrl: String,
       selfieUrl: String
   ): F[Kyc.Decision]
+
   def refresh(ref: String): F[Kyc.Decision]
+
 }
 
 object Kyc {
+
   enum Decision {
+
     case Pending(ref: String); case Approved; case Rejected(reason: String)
+
   }
 
   def sandbox[F[_]: Sync]: F[Kyc[F]] = Sync[F].pure(new Kyc[F] {
@@ -33,9 +39,10 @@ object Kyc {
         ssn: Ssn,
         documentImageUrl: String,
         selfieUrl: String
-    ): F[Decision] = Sync[F].pure(Decision.Approved)
+    ): F[Decision]                        = Sync[F].pure(Decision.Approved)
     def refresh(ref: String): F[Decision] = Sync[F].pure(Decision.Approved)
   })
+
 }
 
 // ---------- Credit bureau (Experian) ----------
@@ -45,6 +52,7 @@ trait CreditBureau[F[_]] {
 }
 
 object CreditBureau {
+
   final case class Report(
       score: Score,
       openTrades: Int,
@@ -59,27 +67,34 @@ object CreditBureau {
           Report(Score.assume(640 + scala.util.Random.nextInt(120)), 3, 0, 3500)
         )
     })
+
 }
 
 // ---------- Plaid (bank linking + transaction history) ----------
 
 trait Plaid[F[_]] {
 
-  /** Exchange a Link public token for a permanent item id. */
+  /**
+    * Exchange a Link public token for a permanent item id.
+    */
   def exchangePublicToken(publicToken: String): F[Plaid.LinkResult]
 
-  /** Sum of inflows / outflows / nsf events for the last `windowDays`, used by underwriting.
+  /**
+    * Sum of inflows / outflows / nsf events for the last `windowDays`, used by underwriting.
     */
   def cashflowSnapshot(itemId: PlaidItemId, windowDays: Int): F[Plaid.Cashflow]
+
 }
 
 object Plaid {
+
   final case class LinkResult(
       itemId: PlaidItemId,
       routing: RoutingNumber,
       last4: Last4,
       holderName: FullName
   )
+
   final case class Cashflow(
       inflowMinor: Long,
       outflowMinor: Long,
@@ -102,24 +117,30 @@ object Plaid {
     def cashflowSnapshot(itemId: PlaidItemId, windowDays: Int): F[Cashflow] =
       Sync[F].pure(Cashflow(1_200_000L, 950_000L, 480_000L, 0))
   })
+
 }
 
 // ---------- AI scoring engine ----------
 
-/** The brief specifies an *ensemble of statistical + ML algorithms*. Behind this trait sits whatever model is current
-  * (gradient-boosted trees, neural net, rule-based fallback). The `model` field on [[ScoringResult]] identifies which
-  * version made each call, so the audit story is intact across model upgrades.
+/**
+  * The brief specifies an *ensemble of statistical + ML algorithms*. Behind this trait sits
+  * whatever model is current (gradient-boosted trees, neural net, rule-based fallback). The `model`
+  * field on [[ScoringResult]] identifies which version made each call, so the audit story is intact
+  * across model upgrades.
   */
 trait ScoringEngine[F[_]] {
+
   def score(
       applicationId: ApplicationId,
       inputs: ScoringInputs
   ): F[ScoringResult]
+
 }
 
 object ScoringEngine {
 
-  /** Sandbox: deterministic linear policy. Replace with a real model server (REST / gRPC).
+  /**
+    * Sandbox: deterministic linear policy. Replace with a real model server (REST / gRPC).
     */
   def sandbox[F[_]: Sync]: F[ScoringEngine[F]] =
     Sync[F].pure(new ScoringEngine[F] {
@@ -127,16 +148,16 @@ object ScoringEngine {
           applicationId: ApplicationId,
           inputs: ScoringInputs
       ): F[ScoringResult] = Sync[F].delay {
-        val base = inputs.bureauScore.fold(620)(_.value)
-        val months = inputs.monthsInBusiness.min(60)
-        val nsfPen = (inputs.nsfCount12m * 15).min(150)
+        val base     = inputs.bureauScore.fold(620)(_.value)
+        val months   = inputs.monthsInBusiness.min(60)
+        val nsfPen   = (inputs.nsfCount12m * 15).min(150)
         val rawScore = (base + months / 2 - nsfPen).max(300).min(850)
-        val s = Score.applyUnsafe(rawScore)
+        val s        = Score.applyUnsafe(rawScore)
         // PD heuristic: 1000 - (score-300)*1.5, clipped to 0..10_000 bps.
         val pdBps = PdBps.applyUnsafe(
-          ((1000.0 - (rawScore - 300) * 1.5).max(0.0).min(10_000.0)).toInt
+          (1000.0 - (rawScore - 300) * 1.5).max(0.0).min(10_000.0).toInt
         )
-        val approve = rawScore >= 600 && inputs.nsfCount12m < 3
+        val approve             = rawScore >= 600 && inputs.nsfCount12m < 3
         val (amount, term, apr) = (rawScore, inputs.monthlyRevenueMinor) match {
           case (s, _) if s >= 740 =>
             (
@@ -172,13 +193,16 @@ object ScoringEngine {
         )
       }
     })
+
 }
 
 // ---------- DocuSign ----------
 
 trait DocuSign[F[_]] {
 
-  /** Create + dispatch an envelope. Returns the envelope id + a viewer URL the app can deep-link to.
+  /**
+    * Create + dispatch an envelope. Returns the envelope id + a viewer URL the app can deep-link
+    * to.
     */
   def sendForSignature(
       applicantEmail: Email,
@@ -186,15 +210,22 @@ trait DocuSign[F[_]] {
       agreementBody: String
   ): F[DocuSign.Sent]
 
-  /** Webhook handler — convert an inbound payload into a decision. */
+  /**
+    * Webhook handler — convert an inbound payload into a decision.
+    */
   def decodeWebhook(payload: String): F[DocuSign.Event]
+
 }
 
 object DocuSign {
+
   final case class Sent(envelopeId: DocuSignEnvelopeId, viewUrl: String)
+
   enum Event {
+
     case Signed(envelopeId: DocuSignEnvelopeId);
     case Declined(envelopeId: DocuSignEnvelopeId, reason: String)
+
   }
 
   def sandbox[F[_]: Sync]: F[DocuSign[F]] = Sync[F].pure(new DocuSign[F] {
@@ -211,28 +242,34 @@ object DocuSign {
         new NotImplementedError("provide a real DocuSign webhook decoder")
       )
   })
+
 }
 
 // ---------- Mbanq (BaaS — accounts, cards, payments) ----------
 
 trait Mbanq[F[_]] {
+
   def issueVirtualCard(
       loanId: LoanId,
       spendLimit: PositiveAmount
   ): F[Mbanq.Issued]
+
   def disburse(
       linkedAccount: LinkedAccount,
       amount: PositiveAmount,
       reference: String
   ): F[String]
+
   def collect(
       linkedAccount: LinkedAccount,
       amount: PositiveAmount,
       reference: String
   ): F[String]
+
 }
 
 object Mbanq {
+
   final case class Issued(token: CardToken, last4: Last4, expiry: CardExpiry)
 
   def sandbox[F[_]: Sync]: F[Mbanq[F]] = Sync[F].pure(new Mbanq[F] {
@@ -266,19 +303,23 @@ object Mbanq {
         "mbq_collect_" + java.util.UUID.randomUUID().toString.take(16)
       )
   })
+
 }
 
 // ---------- PayPal (alternative payment rail) ----------
 
 trait PayPalRail[F[_]] {
+
   def collect(
       payerEmail: Email,
       amount: PositiveAmount,
       reference: String
   ): F[String]
+
 }
 
 object PayPalRail {
+
   def sandbox[F[_]: Sync]: F[PayPalRail[F]] = Sync[F].pure(new PayPalRail[F] {
     def collect(
         payerEmail: Email,
@@ -287,21 +328,27 @@ object PayPalRail {
     ): F[String] =
       Sync[F].delay("pp_" + java.util.UUID.randomUUID().toString.take(16))
   })
+
 }
 
 // ---------- Collection-agency marketplace (bad-deal disposal) ----------
 
 trait CollectionsMarketplace[F[_]] {
 
-  /** Post a nonperforming loan to one or more buyers. Returns the listing id.
+  /**
+    * Post a nonperforming loan to one or more buyers. Returns the listing id.
     */
   def list(loan: Loan): F[String]
 
-  /** Accept a bid and settle. Returns proceeds + buyer ref. */
+  /**
+    * Accept a bid and settle. Returns proceeds + buyer ref.
+    */
   def settleBest(listingRef: String): F[CollectionsMarketplace.Settlement]
+
 }
 
 object CollectionsMarketplace {
+
   final case class Settlement(
       buyerRef: String,
       proceeds: PositiveAmount,
@@ -324,4 +371,5 @@ object CollectionsMarketplace {
         )
       }
     })
+
 }
