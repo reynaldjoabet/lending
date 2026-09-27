@@ -25,7 +25,7 @@ trait Kyc[F[_]] {
 
 object Kyc {
 
-  enum Decision {
+  enum Decision derives CanEqual {
 
     case Pending(ref: String); case Approved; case Rejected(reason: String)
 

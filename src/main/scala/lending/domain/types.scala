@@ -152,8 +152,8 @@ object Body extends RefinedType[String, Not[Blank] & MaxLength[8000]] {}
 
 // ---------- Enums ----------
 
-enum Role   { case Applicant, Admin, BackOffice }
-object Role {
+enum Role derives CanEqual { case Applicant, Admin, BackOffice }
+object Role                {
 
   def parse(s: String): Either[String, Role] = s.toLowerCase match {
     case "applicant"   => Right(Applicant)
@@ -170,9 +170,9 @@ object Role {
 
 }
 
-enum KycStatus { case NotStarted, Pending, Approved, Rejected }
+enum KycStatus derives CanEqual { case NotStarted, Pending, Approved, Rejected }
 
-enum ApplicationStatus {
+enum ApplicationStatus derives CanEqual {
 
   case Submitted    // applicant filed the form
   case Underwriting // scoring engine is computing
@@ -185,12 +185,12 @@ enum ApplicationStatus {
 
 }
 
-enum LoanStatus {
+enum LoanStatus derives CanEqual {
   case Active, Delinquent, PaidOff, ChargedOff, Sold
 }
 
-enum RepaymentStatus { case Scheduled, Paid, Failed, Skipped }
+enum RepaymentStatus derives CanEqual { case Scheduled, Paid, Failed, Skipped }
 
-enum CardStatus { case Issued, Active, Frozen, Cancelled }
+enum CardStatus derives CanEqual { case Issued, Active, Frozen, Cancelled }
 
-enum BadDealStage { case Eligible, Listed, Sold, Recovered }
+enum BadDealStage derives CanEqual { case Eligible, Listed, Sold, Recovered }

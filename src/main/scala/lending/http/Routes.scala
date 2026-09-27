@@ -28,6 +28,10 @@ final class Routes[F[_]: Concurrent](
 
   import Json.given
 
+  // http4s DSL extractors compare Method and Path with ==, which strictEquality rejects without these
+  private given CanEqual[Method, Method]     = CanEqual.derived
+  private given CanEqual[Uri.Path, Uri.Path] = CanEqual.derived
+
   private object Principal {
 
     def unapply(req: Request[F]): Option[UserId] =
