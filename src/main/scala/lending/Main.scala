@@ -7,8 +7,8 @@ import lending.db.*
 import lending.external.*
 import lending.http.Routes
 import lending.service.*
-import org.typelevel.otel4s.metrics.Meter.Implicits.noop
-import org.typelevel.otel4s.trace.Tracer.Implicits.noop
+import org.typelevel.otel4s.metrics.MeterProvider
+import org.typelevel.otel4s.trace.TracerProvider
 import com.comcast.ip4s.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.middleware.Logger
@@ -16,6 +16,10 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import skunk.Session
 
 object Main extends IOApp.Simple {
+
+  // skunk 2.x's Session.Builder asks for providers rather than a Tracer/Meter.
+  private given TracerProvider[IO] = TracerProvider.noop[IO]
+  private given MeterProvider[IO]  = MeterProvider.noop[IO]
 
   def run: IO[Unit] = {
     val logger = Slf4jLogger.getLogger[IO]

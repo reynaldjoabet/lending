@@ -12,7 +12,7 @@ import skunk.codec.all.*
 import org.typelevel.twiddles.syntax.*
 import io.github.iltotore.iron.circe.given
 import io.github.iltotore.iron.constraint.all.*
-import io.github.iltotore.iron.skunk.*
+import lending.db.IronCodecs.*
 
 object Codecs {
 
