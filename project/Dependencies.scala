@@ -43,10 +43,10 @@ object Dependencies {
     val logback  = "1.6.5"
 
     // --- Cache ---
-    val caffeine = "3.3.0"
+    val caffeine = "3.3.1"
 
     // --- Observability ---
-    val datadog = "2.61.0"
+    val datadog = "2.62.0"
     val kamon   = "2.8.1"
     // Must track what skunk-core is built against (skunk 2.x -> otel4s 1.x).
     // Bumping this ahead of skunk trips the early-semver eviction check.
