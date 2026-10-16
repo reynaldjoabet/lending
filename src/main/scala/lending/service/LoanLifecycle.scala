@@ -1,7 +1,6 @@
 package lending.service
 
 import java.time.{Instant, LocalDate}
-import java.util.UUID
 
 import cats.effect.*
 import cats.syntax.all.*
@@ -69,7 +68,7 @@ object LoanLifecycle {
                         )
             now <- Sync[F].delay(Instant.now())
             a    = LoanAgreement(
-                  id = AgreementId.assume(UUID.randomUUID()),
+                  id = AgreementId.assume(Uuids.next()),
                   applicationId = applicationId,
                   docusignEnvelopeId = envelope.envelopeId,
                   documentUrl = envelope.viewUrl,
@@ -121,7 +120,7 @@ object LoanLifecycle {
               for {
                 loanRow <- Sync[F].pure(
                              Loan(
-                               id = LoanId.assume(UUID.randomUUID()),
+                               id = LoanId.assume(Uuids.next()),
                                applicationId = app.id,
                                businessId = app.businessId,
                                principalMinor = amount,
@@ -140,7 +139,7 @@ object LoanLifecycle {
                 issued  <- mbanq.issueVirtualCard(loanRow.id, amount)
                 _       <- cards.insert(
                        VirtualCard(
-                         id = CardId.assume(UUID.randomUUID()),
+                         id = CardId.assume(Uuids.next()),
                          loanId = loanRow.id,
                          token = issued.token,
                          last4 = issued.last4,
@@ -201,7 +200,7 @@ object LoanLifecycle {
         .ofInstant(today, java.time.ZoneOffset.UTC)
         .plusMonths(seq.toLong)
       RepaymentSchedule(
-        id = RepaymentId.assume(UUID.randomUUID()),
+        id = RepaymentId.assume(Uuids.next()),
         loanId = loan.id,
         sequence = seq,
         dueOn = dueOn,

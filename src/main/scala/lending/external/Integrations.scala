@@ -107,7 +107,7 @@ object Plaid {
       Sync[F].pure(
         LinkResult(
           PlaidItemId.assume(
-            "plaid_" + java.util.UUID.randomUUID().toString.take(20)
+            "plaid_" + Uuids.random().toString.take(20)
           ),
           RoutingNumber.assume("121000358"),
           Last4.assume("0001"),
@@ -179,7 +179,7 @@ object ScoringEngine {
             ) // $10k, 12m, 22.99%
         }
         ScoringResult(
-          id = ScoreId.assume(java.util.UUID.randomUUID()),
+          id = ScoreId.assume(Uuids.next()),
           applicationId = applicationId,
           model = "ensemble_v0.1_sandbox",
           score = s,
@@ -234,7 +234,7 @@ object DocuSign {
         name: FullName,
         body: String
     ): F[Sent] = Sync[F].delay {
-      val env = DocuSignEnvelopeId.assume(java.util.UUID.randomUUID().toString)
+      val env = DocuSignEnvelopeId.assume(Uuids.next().toString)
       Sent(env, s"https://docusign.sandbox.invalid/envelope/${env.value}")
     }
     def decodeWebhook(payload: String): F[Event] =
@@ -280,7 +280,7 @@ object Mbanq {
       Sync[F].delay(
         Issued(
           CardToken.assume(
-            "mbq_" + java.util.UUID.randomUUID().toString.take(20)
+            "mbq_" + Uuids.random().toString.take(20)
           ),
           Last4.assume(f"${scala.util.Random.nextInt(10_000)}%04d"),
           CardExpiry.assume("12/30")
@@ -292,7 +292,7 @@ object Mbanq {
         reference: String
     ): F[String] =
       Sync[F].delay(
-        "mbq_disburse_" + java.util.UUID.randomUUID().toString.take(16)
+        "mbq_disburse_" + Uuids.random().toString.take(16)
       )
     def collect(
         linkedAccount: LinkedAccount,
@@ -300,7 +300,7 @@ object Mbanq {
         reference: String
     ): F[String] =
       Sync[F].delay(
-        "mbq_collect_" + java.util.UUID.randomUUID().toString.take(16)
+        "mbq_collect_" + Uuids.random().toString.take(16)
       )
   })
 
@@ -326,7 +326,7 @@ object PayPalRail {
         amount: PositiveAmount,
         reference: String
     ): F[String] =
-      Sync[F].delay("pp_" + java.util.UUID.randomUUID().toString.take(16))
+      Sync[F].delay("pp_" + Uuids.random().toString.take(16))
   })
 
 }
@@ -359,13 +359,13 @@ object CollectionsMarketplace {
     Sync[F].pure(new CollectionsMarketplace[F] {
       def list(loan: Loan): F[String] =
         Sync[F].delay(
-          "listing_" + java.util.UUID.randomUUID().toString.take(12)
+          "listing_" + Uuids.random().toString.take(12)
         )
       def settleBest(listingRef: String): F[Settlement] = Sync[F].delay {
         // 30 cents on the dollar; a real auction would pick highest bid.
         val discount = 7_000 // 70% off principal in bps
         Settlement(
-          buyerRef = "agency_" + java.util.UUID.randomUUID().toString.take(8),
+          buyerRef = "agency_" + Uuids.random().toString.take(8),
           proceeds = PositiveAmount.assume(300_000L),
           discountBps = discount
         )

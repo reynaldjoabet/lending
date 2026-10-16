@@ -17,6 +17,7 @@ object Dependencies {
     val fs2             = "3.14.0"
     val fs2Kafka        = "4.1.3"
     val iron            = "3.3.2"
+    val uuidGenerator   = "5.2.0"
     val hedgehog        = "0.15.0"
     val scalacheck      = "1.20.0"
     val munit           = "1.3.6"
@@ -126,6 +127,8 @@ object Dependencies {
 
   object domain {
 
+    val uuidGenerator = "com.fasterxml.uuid" % "java-uuid-generator" % Versions.uuidGenerator
+
     object iron {
 
       val core       = "io.github.iltotore" %% "iron"            % Versions.iron
@@ -138,8 +141,8 @@ object Dependencies {
 
   object logging {
 
-    val log4cats = "org.typelevel"  %% "log4cats-slf4j"  % Versions.log4cats
-    val logback  = "ch.qos.logback"  % "logback-classic" % Versions.logback
+    val log4cats = "org.typelevel" %% "log4cats-slf4j"  % Versions.log4cats
+    val logback  = "ch.qos.logback" % "logback-classic" % Versions.logback
 
   }
 
@@ -242,6 +245,7 @@ object Dependencies {
     Seq(
       domain.iron.core,
       domain.iron.circe,
+      domain.uuidGenerator,
       database.skunk,
       http.http4s.circe,
       json.circe.core,

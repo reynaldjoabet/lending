@@ -1,7 +1,6 @@
 package lending.service
 
 import java.time.Instant
-import java.util.UUID
 
 import cats.effect.*
 import cats.syntax.all.*
@@ -53,7 +52,7 @@ object Auth {
                         )
                 now <- Sync[F].delay(Instant.now())
                 u    = User(
-                      UserId.assume(UUID.randomUUID()),
+                      UserId.assume(Uuids.next()),
                       email,
                       phone,
                       PasswordHash.assume(hash),

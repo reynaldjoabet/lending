@@ -169,7 +169,7 @@ final class Routes[F[_]: Concurrent](
       authed(req)(_ =>
         req.as[Json.ApplyBody].flatMap { b =>
           val a = LoanApplication(
-            id = ApplicationId.assume(UUID.randomUUID()),
+            id = ApplicationId.assume(Uuids.next()),
             businessId = b.businessId,
             requestedAmount = b.requestedAmount,
             currency = b.currency,

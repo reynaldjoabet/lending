@@ -2,7 +2,6 @@ package lending.service
 
 import java.security.MessageDigest
 import java.time.{Instant, LocalDate}
-import java.util.UUID
 
 import cats.effect.*
 import cats.syntax.all.*
@@ -103,7 +102,7 @@ object Onboarding {
       for {
         now <- Sync[F].delay(Instant.now())
         b    = Business(
-              BusinessId.assume(UUID.randomUUID()),
+              BusinessId.assume(Uuids.next()),
               ownerUserId,
               name,
               ein,
@@ -124,7 +123,7 @@ object Onboarding {
         link <- plaid.exchangePublicToken(plaidPublicToken)
         now  <- Sync[F].delay(Instant.now())
         la    = LinkedAccount(
-               LinkedAccountId.assume(UUID.randomUUID()),
+               LinkedAccountId.assume(Uuids.next()),
                businessId,
                link.itemId,
                link.routing,

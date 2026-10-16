@@ -1,7 +1,6 @@
 package lending.service
 
 import java.time.Instant
-import java.util.UUID
 
 import cats.effect.*
 import cats.syntax.all.*
@@ -97,7 +96,7 @@ object BadDealService {
       .flatMap(now =>
         badDeals.upsert(
           BadDeal(
-            id = BadDealId.assume(UUID.randomUUID()),
+            id = BadDealId.assume(Uuids.next()),
             loanId = loan.id,
             stage = BadDealStage.Eligible,
             discountBps = None,
