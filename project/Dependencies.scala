@@ -40,7 +40,7 @@ object Dependencies {
 
     // --- Logging ---
     val log4cats = "2.8.0"
-    val logback  = "1.6.5"
+    val logback  = "1.6.6"
 
     // --- Cache ---
     val caffeine = "3.3.1"
