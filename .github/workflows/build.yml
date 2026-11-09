@@ -59,7 +59,7 @@ jobs:
 
         distribution: [temurin, corretto]
 
-        scala: ['3.3.8', '3.9.0']
+        scala: ['3.3.9', '3.9.0']
 
     steps:
       - name: Checkout repository
