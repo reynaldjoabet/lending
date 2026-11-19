@@ -51,3 +51,6 @@ postgres-data
 
 .claude/
 .mcp.json
+
+# SemanticDB for the build definition, written on reload when semanticdbEnabled is set globally
+*.sbt.semanticdb
