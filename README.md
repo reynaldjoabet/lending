@@ -104,7 +104,7 @@ POST /admin/bad-deals/auction          # list + settle
 
 ```bash
 createdb lending
-psql lending < src/main/resources/db/schema.sql
+psql -v ON_ERROR_STOP=1 --single-transaction -d lending -f src/main/resources/db/schema.sql
 
 export DB_USER=postgres
 export DB_PASSWORD=postgres
